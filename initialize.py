@@ -4,27 +4,34 @@ import pymysql
 pymysql.install_as_MySQLdb() #if the error -- No module named 'MySQLdb' occured, use this for solution
 import pymysql.cursors
 import imageio
-#from sqlalchemy import *
 #Initialize the file system and \
 #insert all initial files' records into the database system 
 #1. insert all slides with annotations 
 #2. prepare the small batches for the image
+
+#c#configurations... can be moved to a config file in the future.
 image_patch_size=256
 root='/Users/Hamsik·kai/Desktop/capstone/backend/flask/MyFlaskProjects/'
 slides_path=root+'files/slides/'
 annotations_path=root+'files/annotations/'
 patches_path=root+'files/patches/'
-slide_suffix='.png' #change to svs
-annotation_suffix='.png' #change to annotations
+slide_suffix='.png' #png for dev mode, change to svs
+annotation_suffix='.png' #png for dev mode, change to annotations
 files=[x for x in os.listdir(slides_path) if slide_suffix in x]
 connection = pymysql.connect(host='localhost',
                              port = 3306,
                              user='root',
                              password='aapl2020',                       
                              db='AAPL_DB')
+
 print ("connect successful!!")
 
 def insert_slide_intoDB(file):
+    '''
+    Insert slide's information into the Database.
+    
+    file: the file name of the slide
+    '''
     file_path = slides_path+file
     annotations = annotations_path+file
     slide_ID = md5_hash(file_path).hexdigest()
@@ -44,6 +51,15 @@ def insert_slide_intoDB(file):
     return 
     
 def cut_slides_and_save(file, file_loaded, image_patch_size):
+    '''
+    Cut slides into patches
+    
+    Parameters
+    ----------
+    file: the file name
+    file_loaded: the numpy array form of the slide (or other comparable types)
+    image_patch_size: patch size, default 256
+    '''
     slide_ID = md5_hash(slides_path+file).hexdigest()
     try:
         os.mkdir(patches_path+slide_ID)
@@ -62,10 +78,11 @@ def cut_slides_and_save(file, file_loaded, image_patch_size):
             imageio.imwrite(file_patch_path, file_patch)
     return 
 
-for file in files:
-    #file_loaded = load_file(file) #need to write a function laod .svs file 
-    file_loaded = imageio.imread(slides_path+file)
-    insert_slide_intoDB(file)
-    cut_slides_and_save(file, file_loaded, image_patch_size)
-connection.close()
-print('finished initializing the file system and the db.')
+if __name__ == '__main__'
+    for file in files:
+        #TODO: change to another method laoding .svs file 
+        file_loaded = imageio.imread(slides_path+file)
+        insert_slide_intoDB(file)
+        cut_slides_and_save(file, file_loaded, image_patch_size)
+    connection.close()
+    print('finished initializing the file system and the db.')
