@@ -1,3 +1,4 @@
+#This file defined some functions used in server.py
 import hashlib
 import imageio
 import numpy as np
@@ -14,16 +15,21 @@ def md5_hash(filename):
     return file_hash
 
 def get_newest_annotation(slide_id):
-    #read the newest region 
+    '''
+    read the newest region given a slide_id.
+    using g.conn.execute method
+    '''
     sql_get_newest_annotation = 'select annotation_path_after from AAPL_DB.Annotations where slide_id = \'{slide_id}\' order by updated_time desc;'.format(slide_id=slide_id)
-    cursor = g.conn.excecute(sql_get_newest_annotation)
+    cursor = g.conn.execute(sql_get_newest_annotation)
     for result in cursor:
         break #get the first one for the newest
     return reulst[0]
 
 def read_region(slide_id, x,y,width, height):
-    #for a given slide_id, regional information (x,y,width, height), \
-    #read that slide's region by concatenating small patches
+    '''
+    Input: slide_id, x,y,width, height
+    Output: numpy array format for that specific part of the slide
+    '''
     img_list=[]
     for i in range(x//image_patch_size, (x+width)//image_patch_size + 1):
         img_y_list = []
@@ -35,11 +41,21 @@ def read_region(slide_id, x,y,width, height):
 
 ### TODO: find another way merging annotations in xml format.
 def merge_annotations(whole, partial, x,y,width, height):
+    '''
+    merge the whole slide with the partially updated one
+    '''
     whole[x:x+width, 
           y:y+height,:] = partial
     return whole
 
 def write_annotation_to_file(slide_id, str_data, whole = True):
+    '''
+    write the updated annotation to the file system
+    
+    return the saved path and updated time for database insertion
+    #TODO: change to the correct way writing the inputed str_data 
+    '''
+    
     now = datetime.datetime.utcnow()
     updated_time = now.strftime('%Y-%m-%d %H:%M:%S')
     annotation_name = now.strftime('%Y-%m-%d %H-%M-%S')
@@ -61,6 +77,9 @@ def write_annotation_to_file(slide_id, str_data, whole = True):
     
 def insert_annotation_to_sql(slide_id, save_path, updated_time,
                              region_x, region_y, region_width, region_height):
+    '''
+    insert the slide update record to the table 'Annotations'
+    '''
     annotation_path_before = get_newest_annotation(slide_id)
     sql_get_prev_annotation = 'select annotation_path_after from AAPL_DB.Annotations'
     sql_Annotation = 'insert into AAPL_DB.Annotations (slide_ID, region_x, region_y, region_width, region_height, update_time, annotation_path_before, annotation_path_after) \
