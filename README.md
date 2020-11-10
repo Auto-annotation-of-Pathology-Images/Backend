@@ -8,3 +8,5 @@ create database the codes in the mysql/createtables.sql script.
 
 ### Second step: 
 run initialize.py to insert all records into the DB and cut slides into patches 
+
+More information are illustrated in the files/ and mysql/ folders
