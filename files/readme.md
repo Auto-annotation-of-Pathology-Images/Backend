@@ -1,6 +1,8 @@
-##file system
+### file system
 The file system is designed in following way:
-./files
+
+<pre>
+/files
 |— slides
 |   |— slide_name.svs
 |
@@ -16,3 +18,4 @@ The file system is designed in following way:
 |       |— updated_at_time002.annotations
 |       |— …
 |       |— initial_annotation.annotations
+</pre>
