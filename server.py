@@ -1,5 +1,4 @@
 import os
-  # accessible as a variable in index.html:
 import pymysql
 pymysql.install_as_MySQLdb() #if the error -- No module named 'MySQLdb' occured, use this for solution
 from sqlalchemy import *
@@ -9,7 +8,7 @@ import json
 import datatime
 from utils import md5_hash, get_newest_annotation, read_region, write_annotation_to_file, insert_annotation_to_sql
 
-#configurations... can be changed to a config file in the future.
+###configurations... can be changed to a config file in the future.
 image_patch_size=256
 root='/Users/Hamsik·kai/Desktop/capstone/backend/flask/MyFlaskProjects/'
 slides_path=root+'files/slides/'
@@ -19,10 +18,13 @@ app.config['static_folder']=root+'files/'
 slide_suffix='.png' #png for dev mode, change to svs
 annotation_suffix='.png' #png for dev mode, change to annotations
 DATABASEURI = "mysql://root:aapl2020@localhost:3306/AAPL_DB"  #need to be changed
+###
 
+###define the app and connect to the database...
 app = Flask(__name__)
 engine = create_engine(DATABASEURI)
 print("START...")
+
 @app.before_request
 def before_request():
   try:
