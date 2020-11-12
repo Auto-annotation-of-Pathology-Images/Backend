@@ -18,7 +18,6 @@ def md5_hash(filename):
 def get_newest_annotation(slide_id):
     '''
     read the newest annotation path for a slide.
-    using g.conn.execute method to connect to the database
 
     Parameters
     ----------
@@ -30,11 +29,12 @@ def get_newest_annotation(slide_id):
     newest_annotation_path: str
         the latest annotation's path for that slide
     '''
-    sql_get_newest_annotation = 'select annotation_path_after from AAPL_DB.Annotations where slide_id = \'{slide_id}\' order by updated_time desc;'.format(slide_id=slide_id)
-    cursor = g.conn.execute(sql_get_newest_annotation)
-    for result in cursor:
-        break #get the first one for the newest
-    newest_annotation_path=reulst[0]
+    sql_get_newest_annotation = 'select annotation_path_after from AAPI_DB.Annotations where slide_id = \'{slide_id}\' order by updated_time desc;'.format(slide_id=slide_id)
+    with connection.cursor() as cursor: 
+        cursor.execute(sql_get_newest_annotation)
+        for result in cursor:
+            break #get the first one for the newest
+        newest_annotation_path=result[0]
     return newest_annotation_path
 
 def read_region(slide_id, x,y,width, height):
@@ -73,7 +73,9 @@ def read_region(slide_id, x,y,width, height):
     return region_img
 
 
-def write_updated_annotation_to_file(slide_id, str_data, whole = True):
+def write_updated_annotation_to_file(slide_id, 
+                                     str_data, 
+                                     whole = True):
     '''
     write the updated annotation to the file system
 
@@ -85,6 +87,9 @@ def write_updated_annotation_to_file(slide_id, str_data, whole = True):
     str_data: str 
         the decoded xml file sent from ASAP
     
+    whole: Boolean
+        if False, merge the input annotation with the latest one
+
     Returns 
     -------
     save_path: str
@@ -112,17 +117,19 @@ def write_updated_annotation_to_file(slide_id, str_data, whole = True):
         #use api AAPI_code.ml_core.utils.annotations.annotations_group
         merged_annotation = annotations_group([merged_annotation, latest_annotation])
     try: 
-        os.mkdir(app.static_folder+'annotations/{slide_id}/'.format(slide_id=slide_id))
+        os.mkdir(static_folder+'annotations/{slide_id}/'.format(slide_id=slide_id))
     except:
         pass
-    save_path = app.static_folder + \
+    save_path = static_folder + \
         'annotations/{slide_id}/updated_at_{annotation_name}.annotations'\
         .format(slide_id=slide_id, annotation_name=annotation_name)
     create_asap_annotation_file(merged_annotation, save_path)
     return save_path, updated_time
     
-def insert_updated_annotation_to_sql(slide_id, save_path, updated_time,
-                                    x, y, width, height):
+def insert_updated_annotation_to_sql(slide_id, 
+                                     save_path, 
+                                     updated_time,
+                                     x, y, width, height):
     '''
     insert the slide update record to the table 'Annotations'
     
@@ -144,8 +151,8 @@ def insert_updated_annotation_to_sql(slide_id, save_path, updated_time,
         the size of the ROI  
     '''
     annotation_path_before = get_newest_annotation(slide_id)
-    sql_get_prev_annotation = 'select annotation_path_after from AAPL_DB.Annotations'
-    sql_Annotation = 'insert into AAPL_DB.Annotations (slide_ID, region_x, region_y, region_width, region_height, update_time, annotation_path_before, annotation_path_after) \
+    sql_get_prev_annotation = 'select annotation_path_after from AAPI_DB.Annotations'
+    sql_Annotation = 'insert into AAPI_DB.Annotations (slide_ID, region_x, region_y, region_width, region_height, update_time, annotation_path_before, annotation_path_after) \
     values (\'{slide_ID}\', \'{region_x}\', \'{region_y}\', \'{region_width}\', \'{region_height}\', \'{update_time}\', \'{annotation_path_before}\', \'{annotation_path_after}\');'.format( \
     slide_ID=slide_ID,
     region_x=x,
@@ -155,5 +162,7 @@ def insert_updated_annotation_to_sql(slide_id, save_path, updated_time,
     update_time=updated_time,
     annotation_path_before=annotation_path_before,
     annotation_path_after=save_path)
-    cursor = g.conn.excecute(sql_get_newest_annotation)
+    with connection.cursor() as cursor: 
+        cursor.execute(sql_Annotation)
+        connection.commit()
     return 

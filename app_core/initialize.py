@@ -4,6 +4,7 @@ import pymysql
 pymysql.install_as_MySQLdb() #if the error -- No module named 'MySQLdb' occured, use this for solution
 import pymysql.cursors
 import imageio
+import re
 #Initialize the file system and \
 #insert all initial files' records into the database system 
 #1. insert all slides with annotations 
@@ -11,20 +12,12 @@ import imageio
 
 #configurations... can be moved to a config file in the future.
 image_patch_size=256
-root='/Users/Hamsik·kai/Desktop/capstone/backend/flask/MyFlaskProjects/'
+root='/Users/Hamsik·kai/Desktop/MyFlaskProjects/Backend-main/'
 slides_path=root+'files/slides/'
 annotations_path=root+'files/annotations/'
 patches_path=root+'files/patches/'
 slide_suffix='.png' #png for dev mode, change to svs
 annotation_suffix='.png' #png for dev mode, change to annotations
-files=[x for x in os.listdir(slides_path) if slide_suffix in x]
-connection = pymysql.connect(host='localhost',
-                             port = 3306,
-                             user='root',
-                             password='aapl2020',                       
-                             db='AAPL_DB')
-
-print ("connect successful!!")
 
 def insert_slide_intoDB(file):
     '''
@@ -35,13 +28,16 @@ def insert_slide_intoDB(file):
     file_path = slides_path+file
     annotations = annotations_path+file
     slide_ID = md5_hash(file_path).hexdigest()
-    sql_Slides = 'insert into AAPL_DB.Slides (slide_ID, slide_name, slide_path) \
-            values (\'{slide_ID}\', \'{slide_name}\', \'{slide_path}\');'.format( \
+    sql_Slides = 'insert into AAPI_DB.Slides (slide_ID, slide_name, slide_path) \
+            values (\'{slide_ID}\', \'{slide_name}\', \'{slide_path}\') \
+            on duplicate key \
+            update slide_name = \'{slide_name}\', slide_path = \'{slide_path}\';'.format( \
             slide_ID=slide_ID,
             slide_name=file,
             slide_path=file_path)
-    sql_Annotations = 'insert into AAPL_DB.Annotations (slide_ID, annotation_path_after) \
-            values (\'{slide_ID}\', \'{annotation_path_after}\');'.format( \
+    sql_Annotations = 'insert into AAPI_DB.Annotations (slide_ID, annotation_path_after) \
+            values (\'{slide_ID}\', \'{annotation_path_after}\') \
+            on duplicate key update annotation_path_after = \'{annotation_path_after}\';'.format( \
             slide_ID=slide_ID,
             annotation_path_after=annotations_path+file.replace(slide_suffix, annotation_suffix))
     with connection.cursor() as cursor: 
@@ -78,7 +74,15 @@ def cut_slides_and_save(file, file_loaded, image_patch_size):
             imageio.imwrite(file_patch_path, file_patch)
     return 
 
-if __name__ == '__main__'
+if __name__ == '__main__':
+    files=[x for x in os.listdir(slides_path) if slide_suffix in x]
+    connection = pymysql.connect(host='localhost',
+                             port = 3306,
+                             user='root',
+                             password='aapi2020',                       
+                             db='AAPI_DB')
+
+    print ("connect successful!!")
     for file in files:
         #TODO: change to another method laoding .svs file 
         file_loaded = imageio.imread(slides_path+file)
