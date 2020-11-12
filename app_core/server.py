@@ -1,47 +1,35 @@
 import os
 import pymysql
 pymysql.install_as_MySQLdb() #if the error -- No module named 'MySQLdb' occured, use this for solution
-from sqlalchemy import *
-from sqlalchemy.pool import NullPool
+import pymysql.cursors
 from flask import Flask, request, render_template, g, redirect, Response, jsonify, send_from_directory
 import json
-import datatime
+import datetime
 from utils import md5_hash, get_newest_annotation, read_region, write_updated_annotation_to_file, insert_updated_annotation_to_sql
-from AAPI_code.ml_core.api import segment_ROI,segment_WSI
+# from AAPI_code.ml_core.api import segment_ROI,segment_WSI
 
+#define the app
+app = Flask(__name__)
 ###configurations... can be changed to a config file in the future.
 image_patch_size=256
-root='/Users/Hamsik·kai/Desktop/capstone/backend/flask/MyFlaskProjects/'
+root='/Users/Hamsik·kai/Desktop/MyFlaskProjects/Backend-main/'
+static_folder=root+'files/'
 slides_path=root+'files/slides/'
 annotations_path=root+'files/annotations/'
 patches_path=root+'files/patches/'
-app.config['static_folder']=root+'files/'
 slide_suffix='.png' #png for dev mode, change to svs
 annotation_suffix='.png' #png for dev mode, change to annotations
-DATABASEURI = "mysql://root:aapl2020@localhost:3306/AAPL_DB"  #need to be changed
-###
 
-###define the app and connect to the database...
-app = Flask(__name__)
-engine = create_engine(DATABASEURI)
+###connect to the database...
+connection = pymysql.connect(host='localhost',
+                            port = 3306,
+                            user='root',
+                            password='aapi2020',                       
+                            db='AAPI_DB')
+
+print ("connect successful!!")
+
 print("START...")
-
-@app.before_request
-def before_request():
-  try:
-    g.conn = engine.connect()
-  except:
-    print("uh oh, problem connecting to database")
-    import traceback; traceback.print_exc()
-    g.conn = None
-
-@app.teardown_request
-def teardown_request(exception):
-  try:
-    g.conn.close()
-  except Exception as e:
-    pass
-
 @app.route('/')
 def home():
     return 'home'
@@ -49,13 +37,13 @@ def home():
 ### function 1: return all available slides' path 
 @app.route('/get_slides_pathes', methods = ['GET'])
 def get_slides_names():
-    sql = 'select slide_path from Slide_and_annotations;'
+    sql = 'select slide_path from Slides;'
     if request.method == "GET":
-        cursor = g.conn.execute(sql)
-        slides_path = []
-        for result in cursor:
-            slides_path.append(result[0])  
-        cursor.close()
+        with connection.cursor() as cursor: 
+            cursor.execute(sql)
+            slides_path = []
+            for result in cursor:
+                slides_path.append(result[0])  
         return '\n'.join(slides_path)
     return
 
