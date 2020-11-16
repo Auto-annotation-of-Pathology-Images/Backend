@@ -1,10 +1,19 @@
-#This file defined some functions used in server.py
 import hashlib
-import imageio
-import numpy as np
+from pathlib import Path
+from typing import List
 import datetime
-import os
-from AAPI_code.ml_core.utils.annotations import create_asap_annotation_file, merge_annotations, load_annotations_from_asap_xml, load_annotations_from_halo_xml
+from tempfile import NamedTemporaryFile
+
+import imageio
+from PIL import Image
+import numpy as np
+from shapely.geometry import box, Polygon
+
+
+from AAPI_code.ml_core.utils.slide_utils import crop_ROI_from_slide
+import AAPI_code.ml_core.utils.annotations as annotation_utils
+import AAPI_code.ml_core.api as ml_api
+
 
 def md5_hash(filename):
     with open(filename, "rb") as f:
@@ -15,154 +24,130 @@ def md5_hash(filename):
             chunk = f.read(8192)
     return file_hash
 
-def get_newest_annotation(slide_id):
-    '''
-    read the newest annotation path for a slide.
 
-    Parameters
-    ----------
-    slide_id: str
-        input slide id
-    
-    Returns 
-    -------
-    newest_annotation_path: str
-        the latest annotation's path for that slide
-    '''
-    sql_get_newest_annotation = 'select annotation_path_after from AAPI_DB.Annotations where slide_id = \'{slide_id}\' order by updated_time desc;'.format(slide_id=slide_id)
-    with connection.cursor() as cursor: 
-        cursor.execute(sql_get_newest_annotation)
-        for result in cursor:
-            break #get the first one for the newest
-        newest_annotation_path=result[0]
-    return newest_annotation_path
+def format_timestamp(format_str="%Y-%m-%d %H:%M:%S",
+                     dt: datetime.datetime = None):
+    if dt is None:
+        dt = datetime.datetime.now()
+    return dt.strftime(format_str)
 
-def read_region(slide_id, x,y,width, height):
-    '''
+
+def patch_name_formatter(x, y, size):
+    return f'x={x}_y={y}_size={size}.png'
+
+
+def read_covered_patches_as_region(patches_root, patch_size, x, y, width, height):
+    """
     read the the slide's region by concatenating patches.
 
     Parameters
     ----------
-    slide_id: str
-        input slide id
+    patches_root: str or Path
+        path to the root of patches in file system
 
-    x, y: float 
+    x, y: int
         (x, y) is the upper left coordinates for the ROI on level 0
-    
-    width, height: float
-        the size of the ROI
-    
-    Returns 
-    -------
-    region_img: 3-D numpy array
-        the numpy array of the region 
-    '''
 
-    img_list=[]
-    x_start = x//image_patch_size
-    x_end = (x+width)//image_patch_size + 1
-    y_start = y//image_patch_size
-    y_end = (y+height)//image_patch_size + 1
-    for i in range(x_start, x_end):
-        img_y_list = []
-        for j in range(y_start, y_end):
-            file_patch_path = patches_path + slide_id + '/x={}&y={}.png'.format(i,j)
-            img_y_list.append(imageio.imread(file_patch_path))
-        img_list.append(np.concatenate(img_y_list, axis = 0))
-    region_img = np.concatenate(img_list, axis = 1)
+    width, height: int
+        the size of the ROI
+
+    Returns
+    -------
+    region_img: PIL Image
+
+    """
+    img_list = []
+    col_id_start = x // patch_size
+    col_id_end = (x+width) // patch_size + 1
+    row_id_start = y // patch_size
+    row_id_end = (y+height) // patch_size + 1
+
+    for col_id in range(col_id_start, col_id_end):
+        one_col_images = []
+        x = int(col_id * patch_size)
+        for row_id in range(row_id_start, row_id_end):
+            y = int(row_id * patch_size)
+            patch_path = Path(patches_root) / patch_name_formatter(x, y, patch_size)
+            one_col_images.append(imageio.imread(patch_path))
+        img_list.append(np.concatenate(one_col_images, axis=0))
+    region_img = np.concatenate(img_list, axis=1)
+    region_img = Image.fromarray(region_img)
     return region_img
 
 
-def write_updated_annotation_to_file(slide_id, 
-                                     str_data, 
-                                     whole = True):
-    '''
-    write the updated annotation to the file system
+def crop_patches_from_slide(slide_path, patch_size):
+    slide_id = md5_hash(slide_path).digest().hex()
+    patches_root = Path(slide_path).parent.parent / Path(f"patches/{slide_id}/")
 
-    Parameters
-    ----------
-    slide_id: str
-        input slide id
+    if not patches_root.exists():
+        patches_root.mkdir(parents=True)
 
-    str_data: str 
-        the decoded xml file sent from ASAP
-    
-    whole: Boolean
-        if False, merge the input annotation with the latest one
+    crop_ROI_from_slide(slide_path, patches_root, patch_size,
+                        stride=patch_size,
+                        level=0,
+                        apply_otsu=False,
+                        fname_formatter=patch_name_formatter,
+                        overwrite_exist=False)
 
-    Returns 
-    -------
-    save_path: str
-       the updated annotation's saved path
-    
-    updated_time: DATETIME
-        the updated time 
-    '''
-    #transform the str_data into a list[Annotations] format
-    #TODO: modify load_annotations_from_asap_xml to enable input as the encoded str
-    merged_annotation = load_annotations_from_asap_xml(str_data)
 
-    now = datetime.datetime.utcnow()
-    updated_time = now.strftime('%Y-%m-%d %H:%M:%S')
-    annotation_name = now.strftime('%Y-%m-%d %H-%M-%S')
-    if not whole:
-        #need to merge those the partial annotations to the whole 
-        #first, get the latest annotation:
-        latest_annotation_path = get_newest_annotation(slide_id)
-        #TODO: change another way to determine the format of xml file
-        try:
-            latest_annotation = load_annotations_from_halo_xml(latest_annotation_path)
-        except:
-            latest_annotation = load_annotations_from_asap_xml(latest_annotation_path)
-        #use api AAPI_code.ml_core.utils.annotations.annotations_group
-        merged_annotation = annotations_group([merged_annotation, latest_annotation])
-    try: 
-        os.mkdir(static_folder+'annotations/{slide_id}/'.format(slide_id=slide_id))
-    except:
-        pass
-    save_path = static_folder + \
-        'annotations/{slide_id}/updated_at_{annotation_name}.annotations'\
-        .format(slide_id=slide_id, annotation_name=annotation_name)
-    create_asap_annotation_file(merged_annotation, save_path)
-    return save_path, updated_time
-    
-def insert_updated_annotation_to_sql(slide_id, 
-                                     save_path, 
-                                     updated_time,
-                                     x, y, width, height):
-    '''
-    insert the slide update record to the table 'Annotations'
-    
-    Parameters
-    ----------
-    slide_id: str
-        input slide id
+def _filter_annotations_by_region(annotations: List[annotation_utils.ASAPAnnotation],
+                                  region_bbox: Polygon,
+                                  keep_intersection):
 
-    save_path: str
-       the updated annotation's saved path
-    
-    updated_time: DATETIME
-        the updated time 
-    
-    x, y: float 
-        (x, y) is the upper left coordinates for the ROI on level 0
-    
-    width, height: float
-        the size of the ROI  
-    '''
-    annotation_path_before = get_newest_annotation(slide_id)
-    sql_get_prev_annotation = 'select annotation_path_after from AAPI_DB.Annotations'
-    sql_Annotation = 'insert into AAPI_DB.Annotations (slide_ID, region_x, region_y, region_width, region_height, update_time, annotation_path_before, annotation_path_after) \
-    values (\'{slide_ID}\', \'{region_x}\', \'{region_y}\', \'{region_width}\', \'{region_height}\', \'{update_time}\', \'{annotation_path_before}\', \'{annotation_path_after}\');'.format( \
-    slide_ID=slide_ID,
-    region_x=x,
-    region_y=y,
-    region_width=width,
-    region_height=height,
-    update_time=updated_time,
-    annotation_path_before=annotation_path_before,
-    annotation_path_after=save_path)
-    with connection.cursor() as cursor: 
-        cursor.execute(sql_Annotation)
-        connection.commit()
-    return 
+    check_intersect_predicate = lambda geom: region_bbox.intersects(geom)
+
+    # if keep_intersection == True, then keep all geoms where check_intersect_predicate = True;
+    # otherwise, then keep all geoms where check_intersect_predicate = False;
+    # in other words, keep those geoms where keep_intersection == check_intersect_predicate
+
+    return list(filter(lambda annotation:
+                        (check_intersect_predicate(annotation.geometry)) == keep_intersection,
+                       annotations))
+
+
+def replace_annotations_within_region(old_annotations: List[annotation_utils.ASAPAnnotation],
+                                      new_annotations: List[annotation_utils.ASAPAnnotation],
+                                      region_x,
+                                      region_y,
+                                      region_width,
+                                      region_height):
+
+    region_bbox = box(region_x, region_y, region_x + region_width, region_y + region_height)
+
+    # keep all old annotations with NO intersections with current region
+    combined_annotations = _filter_annotations_by_region(old_annotations, region_bbox, False)
+
+    # keep all new annotations with intersections with current region
+    combined_annotations.extend(_filter_annotations_by_region(new_annotations, region_bbox, True))
+
+    return combined_annotations
+
+
+def write_annotations_to_file(annotations, filename):
+    return annotation_utils.create_asap_annotation_file(annotations, filename)
+
+
+def deserialize_annotations_from_str(xml_str):
+    tmp_file = NamedTemporaryFile()
+
+    with open(tmp_file.name, "w") as f:
+        f.write(xml_str)
+
+    annotations = annotation_utils.load_annotations_from_asap_xml(tmp_file.name)
+
+    tmp_file.close()
+
+    return annotations
+
+
+def predict_on_region(region, region_x, region_y):
+    return ml_api.segment_ROI([region], [(region_x, region_y)])
+
+
+def predict_on_slide(slide_path):
+    return ml_api.segment_WSI(slide_path)
+
+
+
+
+
