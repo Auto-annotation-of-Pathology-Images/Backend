@@ -124,6 +124,11 @@ def replace_annotations_within_region(old_annotations: List[annotation_utils.ASA
 
 
 def write_annotations_to_file(annotations, filename):
+    parent_dir = Path(filename).parent
+
+    if not parent_dir.exists():
+        parent_dir.mkdir(parents=True)
+
     return annotation_utils.create_asap_annotation_file(annotations, filename)
 
 

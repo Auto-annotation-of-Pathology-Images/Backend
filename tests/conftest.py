@@ -6,10 +6,6 @@ import pytest
 from app_core import create_app
 from app_core.db import get_db, init_db
 
-# read in SQL for populating test data
-with open(os.path.join(os.path.dirname(__file__), "test_data.sql"), "rb") as f:
-    _data_sql = f.read().decode("utf8")
-
 
 @pytest.fixture
 def app():

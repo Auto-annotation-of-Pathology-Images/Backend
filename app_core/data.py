@@ -2,8 +2,9 @@ import click
 from pathlib import Path
 
 from flask.cli import with_appcontext
+from flask import current_app
 from .query import insert_new_annotation_records, insert_new_slide_records
-from .utils import md5_hash
+from .utils import md5_hash, crop_patches_from_slide
 from .db import get_db
 
 
@@ -21,6 +22,7 @@ def init_data_command(slide_dir, ncpu):
     slide_paths = [p.absolute() for p in slide_dir.glob("*.svs")]
     db = get_db()
     insert_new_slide_records(db, slide_paths)
+    print("Finish inserting slides info.")
 
     annotation_paths = [slide_path.with_suffix(".xml") for slide_path in slide_paths]
     valid_annotation_paths = []
@@ -30,6 +32,13 @@ def init_data_command(slide_dir, ncpu):
             valid_annotation_paths.append(annotation_path)
             slide_ids.append(md5_hash(slide_path).hexdigest())
     insert_new_annotation_records(db, slide_ids, valid_annotation_paths)
+    print("Finish inserting annotations info.")
+
+    for slide_path in slide_paths:
+        print(f"Start cropping slide {slide_path.name}.")
+        patch_size = current_app.config["PATCH_SIZE"]
+        crop_patches_from_slide(slide_path, patch_size)
+        print(f"Finish cropping slide {slide_path.name}.")
 
 
 def init_app(app):
