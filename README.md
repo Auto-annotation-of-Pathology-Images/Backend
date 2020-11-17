@@ -81,13 +81,14 @@ After this step, the whole local file system will look like below,
 |       |— initial_annotation.xml
 </pre>
 
-### Launch 
+## Launch 
 ```shell script
 $ flask run
 ```
 
-### Test
-1. Download test dataset and put it under ```tests/``` directory.
+## Test
+1. Download [test dataset](https://drive.google.com/drive/folders/1PJYMMrK1w-UTOmGkTp7CVnOivYW1WlgX?usp=sharing) and put it under
+ ```../Data/slides``` directory (relative to the path of this repo).
 2. Run ```pytest``` at the root of this repo to start existing tests.
 
 

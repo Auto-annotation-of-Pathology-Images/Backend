@@ -10,15 +10,13 @@ from .db import get_db
 
 @click.command("init-data")
 @click.option('--slide_dir',
-              default=Path(__file__).parent.parent / Path("../Data/slides/"),
               help='Directory containing slides.')
-@click.option('--ncpu', default=1,
-              help='Number of CPUs used for generating data.')
 @with_appcontext
-def init_data_command(slide_dir, ncpu):
+def init_data_command(slide_dir):
     """Scan the Data directory, crop patches and insert records to DB"""
     slide_dir = Path(slide_dir)
-    click.echo(f"Load data from {slide_dir}.\nUsing {ncpu} CPU.")
+    click.echo(f"Load data from {slide_dir}.")
+    assert slide_dir.exists()
     slide_paths = [p.absolute() for p in slide_dir.glob("*.svs")]
     db = get_db()
     insert_new_slide_records(db, slide_paths)
