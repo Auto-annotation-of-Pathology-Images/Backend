@@ -26,3 +26,5 @@ htmlcov/
 *,cover
 
 /tests/.ipynb_checkpoints/
+model
+model/
