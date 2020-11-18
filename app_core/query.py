@@ -96,25 +96,25 @@ def insert_new_slide_records(db, slide_paths):
 
     query_template = (
         "insert into Slides (slide_ID, slide_name, slide_path) "
-        "values ( %(slide_ID)s, %(slide_name)s, %(slide_path)s ) "
+        "values ( (%(slide_ID)s), (%(slide_name)s), (%(slide_path)s) ) "
         "on duplicate key update slide_name = (%(slide_name)s), slide_path = (%(slide_path)s);"
     )
 
-    args = []
+    query_args = []
 
     for slide_path in slide_paths:
         slide_path = Path(slide_path).absolute()
         slide_name = slide_path.name
         slide_ID = md5_hash(slide_path).hexdigest()
 
-        args.append({
+        query_args.append({
             "slide_ID": slide_ID,
             "slide_name": slide_name,
             "slide_path": str(slide_path)
         })
 
     with db.cursor() as cursor:
-        cursor.executemany(query_template, args)
+        cursor.executemany(query_template, query_args)
         db.commit()
 
 
@@ -123,21 +123,21 @@ def insert_new_annotation_records(db, slide_ids, annotation_paths):
 
     query_template = (
         "insert into Annotations (slide_ID, annotation_path_after) "
-        "values ( %(slide_id)s, %(annotation_path)s ) "
+        "values ( (%(slide_id)s), (%(annotation_path)s) ) "
         "on duplicate key update "
         "annotation_path_after = (%(annotation_path)s);"
     )
 
-    args = []
+    query_args = []
 
     for slide_id, annotation_path in zip(slide_ids, annotation_paths):
-        args.append({
+        query_args.append({
             "slide_id": slide_id,
             "annotation_path": str(annotation_path),
         })
 
     with db.cursor() as cursor:
-        cursor.executemany(query_template, args)
+        cursor.executemany(query_template, query_args)
         db.commit()
 
 

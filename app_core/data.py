@@ -1,5 +1,6 @@
 import click
 from pathlib import Path
+from shutil import copyfile
 
 from flask.cli import with_appcontext
 from flask import current_app
@@ -20,23 +21,32 @@ def init_data_command(slide_dir):
     slide_paths = [p.absolute() for p in slide_dir.glob("*.svs")]
     db = get_db()
     insert_new_slide_records(db, slide_paths)
-    print("Finish inserting slides info.")
+    click.echo("Finish inserting slides info.")
 
     annotation_paths = [slide_path.with_suffix(".xml") for slide_path in slide_paths]
     valid_annotation_paths = []
     slide_ids = []
     for slide_path, annotation_path in zip(slide_paths, annotation_paths):
         if slide_path.exists() and annotation_path.exists():
-            valid_annotation_paths.append(annotation_path)
-            slide_ids.append(md5_hash(slide_path).hexdigest())
+            slide_id = md5_hash(slide_path).hexdigest()
+            slide_ids.append(slide_id)
+
+            moved_annotation_path = slide_dir.parent / Path(f"annotations/{slide_id}/initial_annotation.xml")
+            if not moved_annotation_path.parent.exists():
+                moved_annotation_path.parent.mkdir(parents=True)
+
+            copyfile(str(annotation_path), str(moved_annotation_path))
+            click.echo(f"Moved from {annotation_path} to {moved_annotation_path}.")
+            valid_annotation_paths.append(moved_annotation_path.absolute())
+
     insert_new_annotation_records(db, slide_ids, valid_annotation_paths)
-    print("Finish inserting annotations info.")
+    click.echo("Finish inserting annotations info.")
 
     for slide_path in slide_paths:
-        print(f"Start cropping slide {slide_path.name}.")
+        click.echo(f"Start cropping slide {slide_path.name}.")
         patch_size = current_app.config["PATCH_SIZE"]
         crop_patches_from_slide(slide_path, patch_size)
-        print(f"Finish cropping slide {slide_path.name}.")
+        click.echo(f"Finish cropping slide {slide_path.name}.")
 
 
 def init_app(app):
