@@ -1,3 +1,4 @@
 [submodule "AAPI_code"]
 	path = AAPI_code
 	url = https://github.com/Auto-annotation-of-Pathology-Images/AAPI_code
+	branch = master
