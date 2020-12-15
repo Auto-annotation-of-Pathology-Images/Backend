@@ -9,6 +9,10 @@ Flask based backend for AAPI Platform.
     $ git clone --recurse-submodules https://github.com/Auto-annotation-of-Pathology-Images/Backend
     $ cd Backend
     ```
+   Note that since the ML-related code is saved in the manner of submodule for this repo, the version here is just a 
+   snapshot of a specific commit, if you want to follow up with the latest commit, use ``git submodule update --remote`` to 
+   sync with the master branch.
+    
 2. Use a virtual environment to install all [required packages](requirements.txt);
 3. Set environment variables
     ```shell script
@@ -100,6 +104,17 @@ directory will be augmented as,
 |       |— ...
 </pre>
 
+## Pretrained Models
+The models need to be organized in a special manner for the code to load them properly. The structure would look like,
+<pre>
+|— model
+|   |— {CLASS_NAME}
+|       |— initial_model.ckpt
+|       |— {ISO_TIMESTAMP}.ckpt   --->[code generated]
+</pre>
+
+Pretrained models can be downloaded from [here](https://drive.google.com/drive/folders/1IPGR18t5514nfKXXC0XkFdaip5VHYft_?usp=sharing).
+
 ## Launch 
 ```shell script
 $ flask run
@@ -108,7 +123,7 @@ If ``FLASK_ENV=development``, the run command should be ``flask run --no-reload`
 be run twice every interval.
 
 ## Test
-1. Download [test dataset](https://drive.google.com/drive/folders/1PJYMMrK1w-UTOmGkTp7CVnOivYW1WlgX?usp=sharing) and make it as the
+1. Download [test dataset](https://drive.google.com/drive/folders/1HOnQAL1CAYQHpqxN2oPJ8sXq_bP1vrxO?usp=sharing) and make it as the
  ```../Data``` directory (relative to the path of this repo).
 2. Run ```pytest``` at the root of this repo to start existing tests.
 
