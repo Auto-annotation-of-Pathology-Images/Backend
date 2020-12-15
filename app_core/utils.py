@@ -8,7 +8,7 @@ import imageio
 from PIL import Image
 import numpy as np
 from shapely.geometry import box, Polygon
-
+from lxml.etree import XMLSyntaxError
 
 from AAPI_code.ml_core.utils.slide_utils import crop_ROI_from_slide
 import AAPI_code.ml_core.utils.annotations as annotation_utils
@@ -138,9 +138,13 @@ def deserialize_annotations_from_str(xml_str):
     with open(tmp_file.name, "w") as f:
         f.write(xml_str)
 
-    annotations = annotation_utils.load_annotations_from_asap_xml(tmp_file.name)
-
-    tmp_file.close()
+    try:
+        annotations = annotation_utils.load_annotations_from_asap_xml(tmp_file.name)
+    except XMLSyntaxError as e:
+        annotations = []
+        print(f"Can not load xml from {tmp_file.name}: {e}.")
+    finally:
+        tmp_file.close()
 
     return annotations
 

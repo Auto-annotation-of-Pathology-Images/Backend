@@ -1,5 +1,8 @@
 from flask import Flask
+from datetime import datetime, timedelta
 from .config import Config
+from .online_update import schedule_model_updates
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # ----------------------------------------------------------------------------#
 # App Config.
@@ -25,4 +28,10 @@ def create_app(test_config=None):
     from app_core import annotation
     app.register_blueprint(annotation.app)
 
+    scheduler = BackgroundScheduler()
+    job = scheduler.add_job(schedule_model_updates, "interval",
+                            minutes=20,
+                            args=(app, ),
+                            next_run_time=datetime.now() + timedelta(seconds=3))
+    scheduler.start()
     return app

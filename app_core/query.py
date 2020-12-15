@@ -52,6 +52,16 @@ def get_slide_paths(db):
     return slides_paths
 
 
+def get_annotated_slide_ids(db):
+    sql = "select DISTINCT slide_ID from Annotations;"
+
+    with db.cursor() as cursor:
+        cursor.execute(sql)
+        slides_ids = [row[0] for row in cursor.fetchall()]
+
+    return slides_ids
+
+
 def get_slide_path_by_id(db, slide_id):
 
     sql = f"select DISTINCT slide_path from Slides where slide_ID = '{slide_id}';"

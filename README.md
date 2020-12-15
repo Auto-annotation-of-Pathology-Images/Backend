@@ -9,14 +9,14 @@ Flask based backend for AAPI Platform.
     $ git clone --recurse-submodules https://github.com/Auto-annotation-of-Pathology-Images/Backend
     $ cd Backend
     ```
-2. Use a virtual environment to install all required packages;
+2. Use a virtual environment to install all [required packages](requirements.txt);
 3. Set environment variables
     ```shell script
     # install this package
     $ python -m pip install -e .
     # set env variables for this shell session
     $ export FLASK_APP=app_core
-    $ export FLASK_ENV=development
+    $ export FLASK_ENV=production
     ```
 
 ## Data Preparation
@@ -51,7 +51,14 @@ The total structure of required initial data is shown below,
 |   |— slide_001.svs
 |   |— slide_001.xml                   --->[initial annotation]
     |— …
+|— roi
+|   |— Artery_val.h5                   --->[static validation data]
+|   |— Glomerulus_val.h5
+|   |— Tubules_val.h5
 </pre>
+
+The current online updating strategy requires preparing sevral validation datasets beforehand, in order
+to evaluate how the model performs given newly annotated data.
 
 Then, run the following command to generate directories for future annotations and cached patches. 
 ```shell script
@@ -81,14 +88,28 @@ After this step, the whole local file system will look like below,
 |       |— initial_annotation.xml
 </pre>
 
+The background updating task will also add new data to this file system, which will cache cropped ROIs
+and annotations from calibrated results sent from the frontend. After periodical updates, the ``roi``
+directory will be augmented as,
+<pre>
+|— roi
+|   |— {CLASS_NAME}_val.h5             --->[user provided]
+|   |— slide_id/                       --->[code generated]
+|       |— {CLASS_NAME}/
+|           |— {cropped_ROI || ROI_mask}.png
+|       |— ...
+</pre>
+
 ## Launch 
 ```shell script
 $ flask run
 ```
+If ``FLASK_ENV=development``, the run command should be ``flask run --no-reload``, otherwise the background updating will 
+be run twice every interval.
 
 ## Test
-1. Download [test dataset](https://drive.google.com/drive/folders/1PJYMMrK1w-UTOmGkTp7CVnOivYW1WlgX?usp=sharing) and put it under
- ```../Data/slides``` directory (relative to the path of this repo).
+1. Download [test dataset](https://drive.google.com/drive/folders/1PJYMMrK1w-UTOmGkTp7CVnOivYW1WlgX?usp=sharing) and make it as the
+ ```../Data``` directory (relative to the path of this repo).
 2. Run ```pytest``` at the root of this repo to start existing tests.
 
 

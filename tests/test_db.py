@@ -47,3 +47,9 @@ def test_insert_updated_record(app):
                                                    most_recent_annotation_path,
                                                    test_updated_path,
                                                    -1, -1, -1, -1)
+
+
+def test_get_slide_ids(app):
+    with app.app_context():
+        db = get_db()
+        assert query.get_annotated_slide_ids(db)
