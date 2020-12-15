@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import datetime
-from shutil import copyfile
+from shutil import copyfile, rmtree
 
 from .db import get_db
 from .query import get_annotated_slide_ids, get_slide_path_by_id, get_newest_annotation
@@ -73,13 +73,17 @@ def update_model(label_info, train_slide_ids, roi_dir):
         trainer.fit(model, train_data, val_data)
         updated_val_f1 = ckpt_callback.best_model_score.detach().cpu().numpy()
         rel_improvement = (updated_val_f1 - old_val_f1) / old_val_f1 * 100
-        print(f"Online updating summary: {updated_val_f1} ({old_val_f1}, {rel_improvement:.2f}%)")
+        print(f"\033[92m"
+              f"Online updating summary for {class_name}: {updated_val_f1} ({old_val_f1}, {rel_improvement:.2f}%)"
+              f"\033[0m")
 
         if rel_improvement > -5:
             old_model_path = label_row.model_path
             new_model_path = (Path(old_model_path).parent /
                               (datetime.now().isoformat(timespec='seconds') + ".ckpt"))
             copyfile(ckpt_callback.best_model_path, new_model_path)
+
+        rmtree(log_dir)
 
 
 def schedule_model_updates(app):
