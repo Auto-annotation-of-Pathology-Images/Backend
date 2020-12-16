@@ -107,14 +107,15 @@ directory will be augmented as,
 ## Pretrained Models
 The models need to be organized in a special manner for the code to load them properly. The structure would look like,
 <pre>
+/Backend
 |— model
 |   |— {CLASS_NAME}
 |       |— initial_model.ckpt
 |       |— {ISO_TIMESTAMP}.ckpt   --->[code generated]
 </pre>
 
-Pretrained models can be downloaded from [here](https://drive.google.com/drive/folders/1IPGR18t5514nfKXXC0XkFdaip5VHYft_?usp=sharing).
-
+Pretrained models can be downloaded from [here](https://drive.google.com/drive/folders/1IPGR18t5514nfKXXC0XkFdaip5VHYft_?usp=sharing). The "model" directory
+should be placed at the root of this repository, i.e., the same level as the "app_core" directory.
 ## Launch 
 ```shell script
 $ flask run
