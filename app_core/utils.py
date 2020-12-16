@@ -157,6 +157,9 @@ def predict_on_slide(slide_path):
     return ml_api.segment_WSI(slide_path)
 
 
+def color_print(content):
+    print("\033[92m" + str(content) + "\033[0m")
+
 
 
 

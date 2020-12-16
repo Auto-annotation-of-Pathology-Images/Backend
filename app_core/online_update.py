@@ -4,6 +4,7 @@ from shutil import copyfile, rmtree
 
 from .db import get_db
 from .query import get_annotated_slide_ids, get_slide_path_by_id, get_newest_annotation
+from .utils import color_print
 
 from AAPI_code.ml_core.utils import slide_utils
 from AAPI_code.ml_core.utils.annotations import load_annotations_from_asap_xml
@@ -73,9 +74,8 @@ def update_model(label_info, train_slide_ids, roi_dir):
         trainer.fit(model, train_data, val_data)
         updated_val_f1 = ckpt_callback.best_model_score.detach().cpu().numpy()
         rel_improvement = (updated_val_f1 - old_val_f1) / old_val_f1 * 100
-        print(f"\033[92m"
-              f"Online updating summary for {class_name}: {updated_val_f1} ({old_val_f1}, {rel_improvement:.2f}%)"
-              f"\033[0m")
+        color_print(f"Online updating summary for {class_name}: "
+                    f"{updated_val_f1} ({old_val_f1}, {rel_improvement:.2f}%)")
 
         if rel_improvement > -5:
             old_model_path = label_row.model_path
@@ -92,6 +92,8 @@ def schedule_model_updates(app):
 
         annotated_slide_ids = get_annotated_slide_ids(db)
         label_info = load_label_info_from_config(default_label_info_path)
+        loaded_classes = label_info["label_name"].tolist()
+        color_print(f"Online model updates will be applied on {loaded_classes} classes.")
         roi_dir = None
 
         for slide_id in annotated_slide_ids:
